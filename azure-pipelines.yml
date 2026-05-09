@@ -10,6 +10,12 @@ stages:
       - job: 
         displayName: dot net restore
         steps:
+        - task: Bash@3
+          inputs:
+            targetType: 'inline'
+            script: |
+              sudo apt install -y dotnet-sdk-8.0
+              dotnet --version
         - task: DotNetCoreCLI@2
           inputs:
             azureSubscription: 'demo_account'
