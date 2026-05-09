@@ -1,67 +1,87 @@
-trigger: { branches: { include: [ main ] } }
-pool:    { vmImage: 'ubuntu-latest' }
+trigger: none
 
-variables:
-  dotnetVersion: '8.0.x'
-  buildConfig:   'Release'
-  imageName:     'hello-aniket-dotnet'
+pool: demo_agent_pool
+
+
 
 stages:
-- stage: Build
-  jobs:
-  - job: build_publish
-    steps:
-    - task: UseDotNet@2
-      inputs:
-        version: '$(dotnetVersion)'
-        packageType: 'sdk'
+  - stage: dotnetBuild
+    jobs: 
+      - job: 
+        displayName: dot net restore
+        steps:
+        - task: DotNetCoreCLI@2
+          inputs:
+            azureSubscription: 'demo_account'
+            command: 'restore'
+            feedsToUse: 'sejlect'
+        - task: DotNetCoreCLI@2
+          inputs:
+            azureSubscription: 'demo_account'
+            command: 'build'
+        - task: DotNetCoreCLI@2
+          inputs:
+            azureSubscription: 'demo_account'
+            command: 'publish'
+            publishWebProjects: true
+            arguments: '-c Release'
 
-    - script: dotnet restore
-      displayName: 'dotnet restore'
+# stages:
+# - stage: Build
+#   jobs:
+#   - job: build_publish
+#     steps:
+#     - task: UseDotNet@2
+#       inputs:
+#         version: '$(dotnetVersion)'
+#         packageType: 'sdk'
 
-    - script: dotnet build --configuration $(buildConfig) --no-restore
-      displayName: 'dotnet build'
+#     - script: dotnet restore
+#       displayName: 'dotnet restore'
 
-    - script: dotnet test  --configuration $(buildConfig) --no-build --logger trx
-      displayName: 'dotnet test'
-      continueOnError: true
+#     - script: dotnet build --configuration $(buildConfig) --no-restore
+#       displayName: 'dotnet build'
 
-    - task: PublishTestResults@2
-      condition: succeededOrFailed()
-      inputs: { testResultsFormat: 'VSTest', testResultsFiles: '**/*.trx' }
+#     - script: dotnet test  --configuration $(buildConfig) --no-build --logger trx
+#       displayName: 'dotnet test'
+#       continueOnError: true
 
-    - script: dotnet publish --configuration $(buildConfig) --output $(Build.ArtifactStagingDirectory)/publish
-      displayName: 'dotnet publish'
+#     - task: PublishTestResults@2
+#       condition: succeededOrFailed()
+#       inputs: { testResultsFormat: 'VSTest', testResultsFiles: '**/*.trx' }
 
-    - publish: $(Build.ArtifactStagingDirectory)/publish
-      artifact: dotnet-publish
+#     - script: dotnet publish --configuration $(buildConfig) --output $(Build.ArtifactStagingDirectory)/publish
+#       displayName: 'dotnet publish'
 
-- stage: Containerize
-  dependsOn: Build
-  jobs:
-  - job: docker
-    steps:
-    - task: Docker@2
-      inputs:
-        containerRegistry: '$(acrName)'
-        repository: '$(imageName)'
-        command: 'buildAndPush'
-        Dockerfile: 'Dockerfile'
-        tags: |
-          $(Build.BuildNumber)
-          latest
+#     - publish: $(Build.ArtifactStagingDirectory)/publish
+#       artifact: dotnet-publish
 
-- stage: Deploy_AppService
-  dependsOn: Containerize
-  jobs:
-  - deployment: webapp
-    environment: 'dotnet-prod'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - task: AzureWebAppContainer@1
-            inputs:
-              azureSubscription: 'azure-prod'
-              appName: 'hello-aniket-dotnet'
-              imageName: '$(acrName).azurecr.io/$(imageName):$(Build.BuildNumber)'
+# - stage: Containerize
+#   dependsOn: Build
+#   jobs:
+#   - job: docker
+#     steps:
+#     - task: Docker@2
+#       inputs:
+#         containerRegistry: '$(acrName)'
+#         repository: '$(imageName)'
+#         command: 'buildAndPush'
+#         Dockerfile: 'Dockerfile'
+#         tags: |
+#           $(Build.BuildNumber)
+#           latest
+
+# - stage: Deploy_AppService
+#   dependsOn: Containerize
+#   jobs:
+#   - deployment: webapp
+#     environment: 'dotnet-prod'
+#     strategy:
+#       runOnce:
+#         deploy:
+#           steps:
+#           - task: AzureWebAppContainer@1
+#             inputs:
+#               azureSubscription: 'azure-prod'
+#               appName: 'hello-aniket-dotnet'
+#               imageName: '$(acrName).azurecr.io/$(imageName):$(Build.BuildNumber)'
