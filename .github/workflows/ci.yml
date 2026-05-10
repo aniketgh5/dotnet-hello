@@ -3,6 +3,7 @@ name: dotnet-build-deploy
 on:
   push:    { branches: [ main ] }
   # pull_request: { branches: [ main ] }
+  
 
 env:
   IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/hello-aniket-dotnet
@@ -15,6 +16,9 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
+      - uses: actions/install-dotnet@v0.2.0
+      - name: install-dotnet
+        
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: '8.0.x' }
